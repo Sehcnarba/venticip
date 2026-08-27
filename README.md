@@ -1,0 +1,285 @@
+# VentiCIP
+
+App de ferramentas de apoio à ventilação mecânica na UCIP, para iOS e
+Android (Expo / React Native). Tem um menu inicial com acesso às várias
+páginas: a **Calculadora de Pressão Transpulmonar** (balão esofágico,
+sonda Nutrivent™), que calcula a PL inspiratória, a PL expiratória e o
+driving PL a partir de PEEP, Pplat e das pressões esofágicas; mais páginas
+(nomeadamente **Limites de Ventilação Mecânica**) serão adicionadas no
+futuro.
+
+Portada a partir das folhas de cálculo `Balão Esofágico.xlsx` e `Balão
+Esofágico (com valores alvo).xlsx` usadas na UCIP. Toda a lógica de
+cálculo foi validada, valor a valor, contra essas folhas — ver
+`src/calc/validate.ts`.
+
+> ⚠️ **Aviso importante:** esta aplicação é uma ferramenta de apoio ao
+> cálculo, destinada a profissionais de saúde. Não substitui o julgamento
+> clínico, não é um dispositivo médico certificado, e os valores devem ser
+> sempre confirmados antes de qualquer ajuste ventilatório real. Antes de
+> submeter esta app a lojas públicas (App Store / Google Play), confirma
+> com o serviço de compliance/jurídico da tua instituição se é necessário
+> algum enquadramento regulatório adicional (ex: Regulamento de
+> Dispositivos Médicos da UE), dado que a app apoia decisões de
+> ventilação mecânica em doentes reais.
+
+## O que já está feito (v0.1)
+
+- **Menu inicial** com acesso às páginas da app (há espaço reservado para
+  a futura página de Limites de Ventilação Mecânica).
+- **Calculadora de Pressão Transpulmonar**:
+  - Seletor de **unidade de entrada** (cmH2O ou mmHg) — quando é
+    escolhido mmHg, os 4 valores introduzidos são convertidos
+    automaticamente para cmH2O (fator ×1,36, igual ao usado na folha
+    original) antes de qualquer cálculo.
+  - Inputs de **PEEP**, **Pplat**, **PEsee** (pressão esofágica no fim da
+    expiração) e **PEsei** (pressão esofágica no fim da inspiração).
+  - Cálculo de:
+    - **PL expiratória (PLee)** = PEEP − PEsee — alvo 0 a 5 cmH2O
+      (`<0` risco de atelectrauma; `>5` risco de barotrauma);
+    - **PL inspiratória (PLei)** = Pplat − PEsei — alvo `<20` cmH2O;
+    - **Driving PL (DPl)** = (Pplat − PEEP) − (PEsei − PEsee) — alvo
+      `<12` cmH2O.
+  - Cada resultado mostra uma indicação visual (dentro do alvo / fora do
+    alvo, com o motivo) ao lado do valor.
+  - Quando a entrada é em mmHg, os 4 valores convertidos para cmH2O são
+    também apresentados, para conferência.
+- Motor de cálculo isolado da interface
+  (`src/calc/transpulmonaryCalculator.ts`), para ser fácil de testar e de
+  reutilizar.
+
+## Lógica clínica implementada
+
+### Fórmulas (idênticas às da folha de cálculo original)
+
+```
+PLee (PL expiratória)  = PEEP  − PEsee
+PLei (PL inspiratória) = Pplat − PEsei
+DPl  (Driving PL)      = (Pplat − PEEP) − (PEsei − PEsee)
+```
+
+onde `PEEP` e `Pplat` são as pressões das vias aéreas no fim da expiração
+e no fim da inspiração (plateau), respetivamente, e `PEsee`/`PEsei` são as
+pressões esofágicas correspondentes.
+
+### Conversão de unidades
+
+As medições no monitor com a sonda Nutrivent™ podem ser lidas em mmHg;
+para as converter em cmH2O multiplica-se por **1,36** (ex: 12 mmHg =
+16,3 cmH2O) — é exatamente esta conversão que a app aplica quando a
+unidade de entrada escolhida é mmHg.
+
+### Alvos clínicos
+
+Seguindo o protocolo da UCIP (reanálise post-hoc do EPVent2):
+
+| Parâmetro       | Alvo                                              |
+|-----------------|----------------------------------------------------|
+| PL expiratória  | 0 a 5 cmH2O (`<0` atelectrauma; `>5` barotrauma)   |
+| PL inspiratória | `<20` cmH2O                                        |
+| Driving PL      | `<12` cmH2O                                        |
+
+> Nota: a literatura tem também uma referência ligeiramente diferente
+> para a PL expiratória (±2 cmH2O, Dostal & Dostalova 2023) — optámos por
+> seguir os valores da folha de cálculo/protocolo da UCIP (0 a 5 cmH2O),
+> por decisão da equipa clínica.
+
+## Como correr o projeto
+
+```bash
+npm install
+npx expo start
+```
+
+Depois abre a app no telemóvel com a app **Expo Go** (Android/iOS) a ler o
+QR code, ou corre num simulador com `npm run ios` / `npm run android`.
+
+### Se o telemóvel e o computador não estiverem na mesma rede local
+
+O modo por defeito (LAN) só funciona se o telemóvel e o computador
+conseguirem ver-se diretamente na mesma rede local. Se um dos dois (ou os
+dois) estiver em dados móveis, atrás de VPN, ou numa rede com "isolamento
+de clientes" (comum em redes de trabalho e hotspots), vais ver erros como
+`Failed to download remote update` no Expo Go. A solução é usar o modo
+túnel, que passa pela internet em vez de depender da rede local:
+
+```bash
+npx expo start --tunnel
+```
+
+O `@expo/ngrok` (necessário para o túnel) já está no `package.json` como
+devDependency, por isso o `npm install` normal já o instala.
+
+### Se o `npm install` der erro de dependências
+
+Se, mais tarde, um `npm install` falhar com `ERESOLVE` ou `ETARGET`
+(porque o Expo SDK evoluiu entretanto), o mais fiável é deixar o próprio
+Expo escolher as versões certas:
+
+```bash
+npx expo install --fix
+```
+
+Se mesmo assim houver conflitos, `npm install --legacy-peer-deps` é uma
+alternativa aceitável para desbloquear.
+
+### Validar o motor de cálculo
+
+O motor de cálculo é TypeScript puro (sem dependências de React Native),
+por isso pode ser validado isoladamente:
+
+```bash
+npm run validate-calc
+```
+
+Isto corre `src/calc/validate.ts`, que compara a saída do motor com os
+valores exatos das folhas de cálculo originais (caso de referência
+PEEP=8, Pplat=22, PEsee=5,4, PEsei=16,3 cmH2O → PLee=2,6, PLei=5,7,
+DPl=3,1), incluindo o mesmo caso com os valores de entrada em mmHg.
+
+### Verificar tipos
+
+```bash
+npm run typecheck
+```
+
+## Publicar a versão web no GitHub Pages (para testes)
+
+A app não usa nenhuma funcionalidade nativa exclusiva de Android/iOS (só
+componentes universais do React Native), por isso também corre no browser
+através do **Expo Web** — útil para partilhar um link de acesso rápido
+para testes, sem precisar de instalar nada.
+
+### Configuração única (a fazer uma vez)
+
+1. **Criar o repositório no GitHub** — em github.com, "New repository",
+   nome sugerido `venticip` (pode ser outro nome, mas o passo 3 e o
+   `app.json` têm de usar o mesmo, incluindo maiúsculas/minúsculas). Não
+   inicializar com README/`.gitignore` (o projeto já os tem).
+2. **Enviar o projeto local para o repositório**, a partir da pasta do
+   projeto:
+   ```bash
+   git init
+   git add .
+   git commit -m "Versão inicial do VentiCIP"
+   git branch -M main
+   git remote add origin https://github.com/<o-teu-utilizador>/venticip.git
+   git push -u origin main
+   ```
+3. **Adicionar suporte web** (só precisa de ser feito uma vez; o Expo CLI
+   escolhe sozinho as versões corretas para o SDK instalado):
+   ```bash
+   npx expo install react-dom react-native-web @expo/metro-runtime
+   ```
+   Depois de instalado, é boa ideia testar localmente antes de configurar
+   o GitHub: `npx expo start --web` e confirmar que a app abre bem no
+   browser.
+4. **Ativar o GitHub Pages no repositório**: Settings → Pages →
+   "Build and deployment" → Source: **GitHub Actions** (não "Deploy from
+   a branch").
+5. Fazer commit e push das alterações do passo 3 (`package.json` e
+   `package-lock.json` atualizados):
+   ```bash
+   git add package.json package-lock.json
+   git commit -m "Adicionar suporte web (Expo Web)"
+   git push
+   ```
+
+O `app.json` já tem `experiments.baseUrl` configurado como
+`"/venticip"` — isto é necessário porque o GitHub Pages publica o
+projeto numa subpasta do domínio (`utilizador.github.io/venticip/`), não
+na raiz. **Se escolheres outro nome de repositório, tens de atualizar
+este valor** em `app.json` para corresponder exatamente ao nome do
+repositório (maiúsculas/minúsculas incluídas).
+
+### A partir daqui, é automático
+
+O workflow `.github/workflows/deploy-web.yml` já está configurado: a
+cada `git push` para o branch `main`, o GitHub gera a versão web
+(`npx expo export -p web`) e publica-a automaticamente no GitHub Pages —
+não precisas de correr builds manualmente. Ao fim de alguns minutos, a
+app fica acessível em:
+
+```
+https://<o-teu-utilizador>.github.io/venticip/
+```
+
+Podes acompanhar o progresso de cada publicação no separador **Actions**
+do repositório no GitHub.
+
+> ⚠️ Esta URL fica **pública** — qualquer pessoa com o link consegue
+> aceder, sem autenticação. Dado que a app apoia decisões de ventilação
+> mecânica em contexto clínico real, mantém presente o aviso já indicado
+> no início deste README sobre confirmar valores e sobre enquadramento
+> regulatório antes de a usar/divulgar como ferramenta oficial do
+> serviço.
+
+## Preparar para as lojas (Google Play / App Store)
+
+1. Substituir os ícones placeholder em `assets/` (gerados automaticamente,
+   apenas para o projeto arrancar) por ícones definitivos.
+2. Definir o `bundleIdentifier` (iOS) e `package` (Android) em `app.json`
+   — atualmente estão como `com.example.venticip`, um placeholder.
+3. Criar conta de developer: Google Play Console (taxa única de 25 USD) e,
+   se também quiseres publicar em iOS, Apple Developer Program
+   (99 USD/ano).
+4. Usar [EAS Build](https://docs.expo.dev/build/introduction/) para gerar
+   os binários na cloud (não precisas de Android Studio nem de um Mac):
+   ```bash
+   npm install -g eas-cli
+   eas login
+   eas build:configure
+   eas build --platform android --profile preview   # gera um .apk para testes/sideload
+   eas build --platform android --profile production # gera o .aab para a Play Store
+   ```
+5. Submeter à Play Store com `eas submit --platform android`.
+6. Preparar política de privacidade (obrigatória na Play Store) e
+   screenshots. Como esta versão não recolhe nem armazena dados
+   identificáveis do doente (as pressões introduzidas não são guardadas),
+   a política de privacidade pode ser simples — mas confirma com
+   compliance antes de publicar.
+
+## Roteiro (fase 2 — ainda não implementado)
+
+- **Limites de Ventilação Mecânica** — segunda calculadora/consulta
+  prevista nos requisitos iniciais da app (limites de segurança da
+  ventilação, ex: driving pressure, pressão de plateau), atualmente
+  assinalada como "em breve" no menu inicial.
+- Guardar/repetir a última medição (histórico simples, sem persistência
+  de dados do doente).
+- Rever com a equipa clínica se deve ser oferecida também a referência de
+  ±2 cmH2O para a PL expiratória (Dostal & Dostalova 2023), como
+  alternativa configurável ao alvo 0–5 cmH2O atualmente usado.
+
+## Estrutura do projeto
+
+```
+venticip/
+├── .github/
+│   └── workflows/
+│       └── deploy-web.yml       # publica a versão web no GitHub Pages a cada push
+├── index.ts                     # entry point (regista o App via Expo)
+├── App.tsx                      # componente raiz — controla a navegação entre ecrãs
+├── app.json                     # configuração Expo (nome, ícones, bundle id, baseUrl do Pages)
+├── package.json
+├── src/
+│   ├── calc/
+│   │   ├── transpulmonaryCalculator.ts  # motor de cálculo (puro, sem UI)
+│   │   └── validate.ts                  # validação contra a folha original
+│   ├── components/
+│   │   └── SignatureFooter.tsx          # assinatura fixa no fundo da app
+│   └── screens/
+│       ├── HomeScreen.tsx                     # menu inicial
+│       └── TranspulmonaryPressureScreen.tsx   # calculadora de pressão transpulmonar
+└── assets/                      # ícones (placeholders, substituir antes de publicar)
+```
+
+### Sobre a navegação
+
+Para já, a navegação entre ecrãs é feita com estado simples do React (sem
+nenhuma biblioteca de navegação) — o `App.tsx` guarda qual o ecrã atual e
+passa uma função `onBack` / `onOpenX` a cada ecrã. Isto foi deliberado
+para não introduzir mais dependências externas enquanto a app só tem
+2 páginas. Se o número de páginas crescer bastante mais (ex: ao
+adicionar os Limites de Ventilação Mecânica e outras ferramentas), vale a
+pena migrar para [React Navigation](https://reactnavigation.org/).

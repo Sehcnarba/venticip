@@ -14,3 +14,14 @@ android/
 # Variáveis de ambiente
 .env
 .env.local
+
+# Documentos clínicos de origem (Excel/Word) — não devem ser publicados no repositório.
+# Mantidos apenas localmente / na pasta "Balão esofágico" do OneDrive.
+*.xlsx
+*.docx
+Balão Esofágico.xlsx
+Balão Esofágico (com valores alvo).xlsx
+Balão Esofágico Protocolo.docx
+Balão Esofágico Protocolo_reviewed.docx
+Procedimento Balão Esofágico Enfermagem.docx
+Procedimento Balão Esofágico Enfermagem_reviewed.docx

@@ -15,9 +15,10 @@
  *   PEsee — pressão esofágica no fim da expiração
  *   PEsei — pressão esofágica no fim da inspiração
  *
- * Todas as pressões de entrada podem ser introduzidas em cmH2O ou em mmHg;
- * quando a unidade escolhida é mmHg, os valores são convertidos para cmH2O
- * antes do cálculo (fator 1,36, igual à célula K4 da folha: `=I4*1,36`).
+ * Cada uma das 4 pressões de entrada tem a sua própria unidade (cmH2O ou
+ * mmHg) — por exemplo, a PEEP pode ser lida em cmH2O e a Pplat em mmHg no
+ * mesmo cálculo. Um valor em mmHg é convertido para cmH2O antes do cálculo
+ * (fator 1,36, igual à célula K4 da folha: `=I4*1,36`).
  */
 
 export type PressureUnit = "cmH2O" | "mmHg";
@@ -25,15 +26,21 @@ export type PressureUnit = "cmH2O" | "mmHg";
 /** Fator de conversão mmHg -> cmH2O usado na folha original (célula K4). */
 export const MMHG_TO_CMH2O = 1.36;
 
+/** Um valor de pressão medido, com a unidade em que foi introduzido. */
+export interface PressureFieldInput {
+  value: number;
+  unit: PressureUnit;
+}
+
 export interface PressureInputs {
   /** PEEP — pressão das vias aéreas no fim da expiração. */
-  peep: number;
+  peep: PressureFieldInput;
   /** Pplat — pressão das vias aéreas no fim da inspiração (plateau). */
-  pplat: number;
+  pplat: PressureFieldInput;
   /** PEsee — pressão esofágica no fim da expiração. */
-  pEsee: number;
+  pEsee: PressureFieldInput;
   /** PEsei — pressão esofágica no fim da inspiração. */
-  pEsei: number;
+  pEsei: PressureFieldInput;
 }
 
 export interface TranspulmonaryResult {
@@ -48,6 +55,12 @@ export interface TranspulmonaryResult {
   plInspiratory: number;
   /** Driving pressure transpulmonar (DPl). Alvo: < 12 cmH2O. */
   drivingPl: number;
+  /**
+   * Driving pressure convencional do sistema respiratório (ΔP = Pplat − PEEP),
+   * a medida "clássica" (não transpulmonar) usada na literatura de ventilação
+   * protetora — mostrada como referência ao lado do resultado.
+   */
+  drivingPressureConventional: number;
 }
 
 /** Converte um valor de pressão para cmH2O, de acordo com a unidade de entrada. */
@@ -55,19 +68,21 @@ export function toCmH2O(value: number, unit: PressureUnit): number {
   return unit === "mmHg" ? value * MMHG_TO_CMH2O : value;
 }
 
-/** Calcula as pressões transpulmonares a partir dos 4 valores medidos. */
-export function calculateTranspulmonaryPressures(
-  inputs: PressureInputs,
-  unit: PressureUnit
-): TranspulmonaryResult {
-  const peep = toCmH2O(inputs.peep, unit);
-  const pplat = toCmH2O(inputs.pplat, unit);
-  const pEsee = toCmH2O(inputs.pEsee, unit);
-  const pEsei = toCmH2O(inputs.pEsei, unit);
+/**
+ * Calcula as pressões transpulmonares a partir dos 4 valores medidos.
+ * Cada valor é convertido para cmH2O de acordo com a sua própria unidade
+ * antes de entrar nas fórmulas — as 4 unidades podem ser diferentes entre si.
+ */
+export function calculateTranspulmonaryPressures(inputs: PressureInputs): TranspulmonaryResult {
+  const peep = toCmH2O(inputs.peep.value, inputs.peep.unit);
+  const pplat = toCmH2O(inputs.pplat.value, inputs.pplat.unit);
+  const pEsee = toCmH2O(inputs.pEsee.value, inputs.pEsee.unit);
+  const pEsei = toCmH2O(inputs.pEsei.value, inputs.pEsei.unit);
 
   const plExpiratory = peep - pEsee;
   const plInspiratory = pplat - pEsei;
   const drivingPl = pplat - peep - (pEsei - pEsee);
+  const drivingPressureConventional = pplat - peep;
 
   return {
     peepCmH2O: peep,
@@ -77,6 +92,7 @@ export function calculateTranspulmonaryPressures(
     plExpiratory,
     plInspiratory,
     drivingPl,
+    drivingPressureConventional,
   };
 }
 
@@ -92,12 +108,23 @@ export function evaluateExpiratoryTarget(plExpiratory: number): ExpiratoryTarget
   return "dentro";
 }
 
-/** PL inspiratória dentro do alvo (< 20 cmH2O)? */
-export function isInspiratoryWithinTarget(plInspiratory: number): boolean {
-  return plInspiratory < 20;
+/**
+ * Estado de um limite "de teto" (PL inspiratória, Driving PL): dentro do
+ * alvo, acima do alvo, ou negativo — caso em que o valor não faz sentido
+ * clínico e deve ser revisto (erro provável nos valores introduzidos).
+ */
+export type LimitTargetStatus = "dentro" | "acima" | "revisar";
+
+/** PL inspiratória: alvo < 20 cmH2O; negativa não faz sentido clínico. */
+export function evaluateInspiratoryTarget(plInspiratory: number): LimitTargetStatus {
+  if (plInspiratory < 0) return "revisar";
+  if (plInspiratory >= 20) return "acima";
+  return "dentro";
 }
 
-/** Driving PL dentro do alvo (< 12 cmH2O)? */
-export function isDrivingWithinTarget(drivingPl: number): boolean {
-  return drivingPl < 12;
+/** Driving PL: alvo < 12 cmH2O; negativo não faz sentido clínico. */
+export function evaluateDrivingTarget(drivingPl: number): LimitTargetStatus {
+  if (drivingPl < 0) return "revisar";
+  if (drivingPl >= 12) return "acima";
+  return "dentro";
 }

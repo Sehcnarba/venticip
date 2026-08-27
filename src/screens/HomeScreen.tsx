@@ -3,6 +3,8 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-nati
 
 export interface HomeScreenProps {
   onOpenTranspulmonaryPressure: () => void;
+  onOpenVentilationLimits: () => void;
+  onOpenReferences: () => void;
 }
 
 interface MenuItem {
@@ -12,21 +14,29 @@ interface MenuItem {
   onPress?: () => void;
 }
 
-const COMING_SOON: Omit<MenuItem, "onPress">[] = [
-  {
-    icon: "🔒",
-    title: "Limites de Ventilação Mecânica",
-    subtitle: "Consulta rápida de limites de segurança da ventilação (em breve)",
-  },
-];
-
-export default function HomeScreen({ onOpenTranspulmonaryPressure }: HomeScreenProps) {
+export default function HomeScreen({
+  onOpenTranspulmonaryPressure,
+  onOpenVentilationLimits,
+  onOpenReferences,
+}: HomeScreenProps) {
   const items: MenuItem[] = [
     {
       icon: "🎈",
       title: "Pressão Transpulmonar",
       subtitle: "Balão esofágico (Nutrivent™) — PL inspiratória, expiratória e driving PL",
       onPress: onOpenTranspulmonaryPressure,
+    },
+    {
+      icon: "📏",
+      title: "Limites de Ventilação Mecânica",
+      subtitle: "Volume corrente (Vc) e volume minuto (VM) a partir do peso, altura e FR",
+      onPress: onOpenVentilationLimits,
+    },
+    {
+      icon: "📚",
+      title: "Referências",
+      subtitle: "Fórmulas e esquemas usados nos cálculos da app",
+      onPress: onOpenReferences,
     },
   ];
 
@@ -46,18 +56,6 @@ export default function HomeScreen({ onOpenTranspulmonaryPressure }: HomeScreenP
           </View>
           <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
-      ))}
-
-      {COMING_SOON.map((item) => (
-        <View key={item.title} style={[styles.menuCard, styles.menuCardDisabled]}>
-          <View style={[styles.menuIcon, styles.menuIconDisabled]}>
-            <Text style={styles.menuIconText}>{item.icon}</Text>
-          </View>
-          <View style={styles.menuTextWrap}>
-            <Text style={[styles.menuTitle, styles.menuTitleDisabled]}>{item.title}</Text>
-            <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
-          </View>
-        </View>
       ))}
     </ScrollView>
   );
@@ -87,7 +85,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
   },
-  menuCardDisabled: { opacity: 0.55 },
   menuIcon: {
     width: 44,
     height: 44,
@@ -97,11 +94,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 14,
   },
-  menuIconDisabled: { backgroundColor: "#EEF2F5" },
   menuIconText: { fontSize: 20 },
   menuTextWrap: { flex: 1 },
   menuTitle: { fontSize: 15, fontWeight: "700", color: "#12283C", flexShrink: 1 },
-  menuTitleDisabled: { color: "#5B6B7A" },
   menuSubtitle: { fontSize: 12, color: "#5B6B7A", marginTop: 2, flexShrink: 1 },
   chevron: { fontSize: 22, color: "#B7C1CA", marginLeft: 8 },
 });

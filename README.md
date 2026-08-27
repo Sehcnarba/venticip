@@ -1,17 +1,17 @@
 # VentiCIP
 
 App de ferramentas de apoio à ventilação mecânica na UCIP, para iOS e
-Android (Expo / React Native). Tem um menu inicial com acesso às várias
+Android (Expo / React Native). Tem um menu inicial com acesso a três
 páginas: a **Calculadora de Pressão Transpulmonar** (balão esofágico,
-sonda Nutrivent™), que calcula a PL inspiratória, a PL expiratória e o
-driving PL a partir de PEEP, Pplat e das pressões esofágicas; mais páginas
-(nomeadamente **Limites de Ventilação Mecânica**) serão adicionadas no
-futuro.
+sonda Nutrivent™), os **Limites de Ventilação Mecânica** (volume corrente
+e volume minuto) e uma página de **Referências** com as fórmulas e
+esquemas usados nos cálculos.
 
 Portada a partir das folhas de cálculo `Balão Esofágico.xlsx` e `Balão
-Esofágico (com valores alvo).xlsx` usadas na UCIP. Toda a lógica de
-cálculo foi validada, valor a valor, contra essas folhas — ver
-`src/calc/validate.ts`.
+Esofágico (com valores alvo).xlsx` usadas na UCIP, e da fórmula de peso
+ideal já usada no projeto irmão NutriCIP. Toda a lógica de cálculo foi
+validada, valor a valor, contra essas fontes — ver `src/calc/validate.ts`
+e `src/calc/validateTidalVolume.ts`.
 
 > ⚠️ **Aviso importante:** esta aplicação é uma ferramenta de apoio ao
 > cálculo, destinada a profissionais de saúde. Não substitui o julgamento
@@ -23,53 +23,69 @@ cálculo foi validada, valor a valor, contra essas folhas — ver
 > Dispositivos Médicos da UE), dado que a app apoia decisões de
 > ventilação mecânica em doentes reais.
 
-## O que já está feito (v0.1)
+## O que já está feito
 
-- **Menu inicial** com acesso às páginas da app (há espaço reservado para
-  a futura página de Limites de Ventilação Mecânica).
+- **Menu inicial** com acesso às 3 páginas da app.
 - **Calculadora de Pressão Transpulmonar**:
-  - Seletor de **unidade de entrada** (cmH2O ou mmHg) — quando é
-    escolhido mmHg, os 4 valores introduzidos são convertidos
-    automaticamente para cmH2O (fator ×1,36, igual ao usado na folha
-    original) antes de qualquer cálculo.
-  - Inputs de **PEEP**, **Pplat**, **PEsee** (pressão esofágica no fim da
-    expiração) e **PEsei** (pressão esofágica no fim da inspiração).
+  - Cada um dos 4 valores medidos (**PEEP**, **Pplat**, **PEsee**,
+    **PEsei**) tem o seu **próprio seletor de unidade** (cmH2O ou mmHg) —
+    podes, por exemplo, introduzir a PEEP em cmH2O e a Pplat em mmHg no
+    mesmo cálculo. Um valor em mmHg é convertido automaticamente para
+    cmH2O (fator ×1,36, igual ao usado na folha original) antes de
+    qualquer cálculo; quando pelo menos um campo está em mmHg, os 4
+    valores convertidos são mostrados para conferência.
   - Cálculo de:
-    - **PL expiratória (PLee)** = PEEP − PEsee — alvo 0 a 5 cmH2O
-      (`<0` risco de atelectrauma; `>5` risco de barotrauma);
-    - **PL inspiratória (PLei)** = Pplat − PEsei — alvo `<20` cmH2O;
+    - **PL expiratória (PLee)** = PEEP − PEsee — alvo 0 a 5 cmH2O. Tem
+      3 estados visuais: **verde** dentro do alvo, **amarelo** em risco
+      de atelectrauma (`<0`), **vermelho** em risco de barotrauma (`>5`);
+    - **PL inspiratória (PLei)** = Pplat − PEsei — alvo `<20` cmH2O
+      (verde dentro do alvo, amarelo acima do alvo, **cinzento "Rever
+      valores"** se o resultado for negativo — sem sentido clínico,
+      provável erro nos valores introduzidos);
     - **Driving PL (DPl)** = (Pplat − PEEP) − (PEsei − PEsee) — alvo
-      `<12` cmH2O.
-  - Cada resultado mostra uma indicação visual (dentro do alvo / fora do
-    alvo, com o motivo) ao lado do valor.
-  - Quando a entrada é em mmHg, os 4 valores convertidos para cmH2O são
-    também apresentados, para conferência.
-- Motor de cálculo isolado da interface
-  (`src/calc/transpulmonaryCalculator.ts`), para ser fácil de testar e de
+      `<12` cmH2O, com os mesmos 3 estados que a PLei;
+    - **Driving Pressure convencional** = Pplat − PEEP — a medida
+      "clássica" (não transpulmonar), mostrada sempre como referência.
+  - **Sugestão de atuação**: quando algum parâmetro está fora do alvo,
+    aparece um cartão com a sugestão correspondente — aumentar a PEEP
+    (atelectrauma), reduzir a PEEP (barotrauma), ou rever volume
+    corrente/frequência ventilatória/relação I:E (PLei ou DPl acima do
+    alvo).
+- **Limites de Ventilação Mecânica** (Volume Corrente / Volume Minuto):
+  - Peso, altura e sexo do doente; o sexo é necessário para a fórmula do
+    peso ideal.
+  - **Régua deslizante** (componente próprio, sem dependências externas)
+    para definir a frequência respiratória (FR) inicial.
+  - Calcula o IMC e decide automaticamente se usa o peso real (IMC
+    normal, 18,5–24,9) ou o peso ideal — fórmula de Devine, igual à do
+    NutriCIP (IMC alterado).
+  - **Vc (volume corrente)** = 6 a 8 mL × peso usado.
+  - **VM (volume minuto)** = Vc × FR.
+- **Referências**: as fórmulas de todos os cálculos acima, mais os
+  esquemas/tabelas extraídos do protocolo da UCIP e da literatura citada
+  (métodos de cálculo da PL, limites sugeridos, e exemplos de titulação
+  de PEEP pela pressão transpulmonar).
+- Motores de cálculo isolados da interface
+  (`src/calc/transpulmonaryCalculator.ts`,
+  `src/calc/tidalVolumeCalculator.ts`), para serem fáceis de testar e de
   reutilizar.
 
 ## Lógica clínica implementada
 
-### Fórmulas (idênticas às da folha de cálculo original)
+### Pressão transpulmonar — fórmulas
 
 ```
-PLee (PL expiratória)  = PEEP  − PEsee
-PLei (PL inspiratória) = Pplat − PEsei
-DPl  (Driving PL)      = (Pplat − PEEP) − (PEsei − PEsee)
+PLee (PL expiratória)          = PEEP  − PEsee
+PLei (PL inspiratória)         = Pplat − PEsei
+DPl  (Driving PL)              = (Pplat − PEEP) − (PEsei − PEsee)
+Driving Pressure convencional  = Pplat − PEEP
 ```
 
 onde `PEEP` e `Pplat` são as pressões das vias aéreas no fim da expiração
 e no fim da inspiração (plateau), respetivamente, e `PEsee`/`PEsei` são as
-pressões esofágicas correspondentes.
+pressões esofágicas correspondentes. Conversão: **1 mmHg = 1,36 cmH2O**.
 
-### Conversão de unidades
-
-As medições no monitor com a sonda Nutrivent™ podem ser lidas em mmHg;
-para as converter em cmH2O multiplica-se por **1,36** (ex: 12 mmHg =
-16,3 cmH2O) — é exatamente esta conversão que a app aplica quando a
-unidade de entrada escolhida é mmHg.
-
-### Alvos clínicos
+### Pressão transpulmonar — alvos clínicos
 
 Seguindo o protocolo da UCIP (reanálise post-hoc do EPVent2):
 
@@ -82,7 +98,18 @@ Seguindo o protocolo da UCIP (reanálise post-hoc do EPVent2):
 > Nota: a literatura tem também uma referência ligeiramente diferente
 > para a PL expiratória (±2 cmH2O, Dostal & Dostalova 2023) — optámos por
 > seguir os valores da folha de cálculo/protocolo da UCIP (0 a 5 cmH2O),
-> por decisão da equipa clínica.
+> por decisão da equipa clínica. Ver a página de Referências na app.
+
+### Volume corrente / volume minuto — fórmulas e regra
+
+```
+IMC          = peso (kg) / altura (m)²
+Peso ideal   = 50 + 0,91×(altura_cm−152,4)      [homem]
+             = 45,5 + 0,91×(altura_cm−152,4)    [mulher]
+Peso usado   = peso real (se IMC 18,5–24,9) ou peso ideal (caso contrário)
+Vc           = 6 a 8 mL × peso usado
+VM           = Vc × FR
+```
 
 ## Como correr o projeto
 
@@ -123,19 +150,22 @@ npx expo install --fix
 Se mesmo assim houver conflitos, `npm install --legacy-peer-deps` é uma
 alternativa aceitável para desbloquear.
 
-### Validar o motor de cálculo
+### Validar os motores de cálculo
 
-O motor de cálculo é TypeScript puro (sem dependências de React Native),
-por isso pode ser validado isoladamente:
+Os motores de cálculo são TypeScript puro (sem dependências de React
+Native), por isso podem ser validados isoladamente:
 
 ```bash
-npm run validate-calc
+npm run validate-calc    # pressão transpulmonar
+npm run validate-tidal   # volume corrente / volume minuto
 ```
 
-Isto corre `src/calc/validate.ts`, que compara a saída do motor com os
-valores exatos das folhas de cálculo originais (caso de referência
-PEEP=8, Pplat=22, PEsee=5,4, PEsei=16,3 cmH2O → PLee=2,6, PLei=5,7,
-DPl=3,1), incluindo o mesmo caso com os valores de entrada em mmHg.
+`validate-calc` compara a saída do motor com os valores exatos das
+folhas de cálculo originais (caso de referência PEEP=8, Pplat=22,
+PEsee=5,4, PEsei=16,3 cmH2O → PLee=2,6, PLei=5,7, DPl=3,1), incluindo
+casos com unidades em mmHg e unidades mistas por campo. `validate-tidal`
+confirma o peso ideal contra o mesmo caso de referência do NutriCIP e
+testa as fronteiras da classificação do IMC.
 
 ### Verificar tipos
 
@@ -146,9 +176,10 @@ npm run typecheck
 ## Publicar a versão web no GitHub Pages (para testes)
 
 A app não usa nenhuma funcionalidade nativa exclusiva de Android/iOS (só
-componentes universais do React Native), por isso também corre no browser
-através do **Expo Web** — útil para partilhar um link de acesso rápido
-para testes, sem precisar de instalar nada.
+componentes universais do React Native — a régua da FR é feita com
+`PanResponder`/`Animated` do core, sem bibliotecas externas), por isso
+também corre no browser através do **Expo Web** — útil para partilhar um
+link de acesso rápido para testes, sem precisar de instalar nada.
 
 ### Configuração única (a fazer uma vez)
 
@@ -235,21 +266,20 @@ do repositório no GitHub.
 5. Submeter à Play Store com `eas submit --platform android`.
 6. Preparar política de privacidade (obrigatória na Play Store) e
    screenshots. Como esta versão não recolhe nem armazena dados
-   identificáveis do doente (as pressões introduzidas não são guardadas),
+   identificáveis do doente (os valores introduzidos não são guardados),
    a política de privacidade pode ser simples — mas confirma com
    compliance antes de publicar.
 
-## Roteiro (fase 2 — ainda não implementado)
+## Roteiro (ainda não implementado)
 
-- **Limites de Ventilação Mecânica** — segunda calculadora/consulta
-  prevista nos requisitos iniciais da app (limites de segurança da
-  ventilação, ex: driving pressure, pressão de plateau), atualmente
-  assinalada como "em breve" no menu inicial.
 - Guardar/repetir a última medição (histórico simples, sem persistência
   de dados do doente).
 - Rever com a equipa clínica se deve ser oferecida também a referência de
   ±2 cmH2O para a PL expiratória (Dostal & Dostalova 2023), como
   alternativa configurável ao alvo 0–5 cmH2O atualmente usado.
+- Mais parâmetros nos Limites de Ventilação Mecânica (ex: driving
+  pressure convencional, pressão de plateau) além do Vc/VM já
+  implementados.
 
 ## Estrutura do projeto
 
@@ -264,14 +294,21 @@ venticip/
 ├── package.json
 ├── src/
 │   ├── calc/
-│   │   ├── transpulmonaryCalculator.ts  # motor de cálculo (puro, sem UI)
-│   │   └── validate.ts                  # validação contra a folha original
+│   │   ├── transpulmonaryCalculator.ts  # motor de cálculo da pressão transpulmonar (puro, sem UI)
+│   │   ├── validate.ts                  # validação contra a folha original
+│   │   ├── tidalVolumeCalculator.ts     # motor de cálculo do Vc/VM (puro, sem UI)
+│   │   └── validateTidalVolume.ts       # validação do Vc/VM
 │   ├── components/
-│   │   └── SignatureFooter.tsx          # assinatura fixa no fundo da app
+│   │   ├── SignatureFooter.tsx          # assinatura fixa no fundo da app
+│   │   └── RulerSlider.tsx              # régua deslizante própria (sem dependências externas)
 │   └── screens/
 │       ├── HomeScreen.tsx                     # menu inicial
-│       └── TranspulmonaryPressureScreen.tsx   # calculadora de pressão transpulmonar
-└── assets/                      # ícones (placeholders, substituir antes de publicar)
+│       ├── TranspulmonaryPressureScreen.tsx   # calculadora de pressão transpulmonar
+│       ├── VentilationLimitsScreen.tsx        # limites de ventilação (Vc/VM)
+│       └── ReferencesScreen.tsx               # fórmulas e esquemas de referência
+└── assets/
+    ├── icon.png, adaptive-icon.png, splash-icon.png, favicon.png  # placeholders, substituir antes de publicar
+    └── referencias/              # imagens mostradas na página de Referências (recortadas do protocolo/literatura)
 ```
 
 ### Sobre a navegação
@@ -280,6 +317,5 @@ Para já, a navegação entre ecrãs é feita com estado simples do React (sem
 nenhuma biblioteca de navegação) — o `App.tsx` guarda qual o ecrã atual e
 passa uma função `onBack` / `onOpenX` a cada ecrã. Isto foi deliberado
 para não introduzir mais dependências externas enquanto a app só tem
-2 páginas. Se o número de páginas crescer bastante mais (ex: ao
-adicionar os Limites de Ventilação Mecânica e outras ferramentas), vale a
-pena migrar para [React Navigation](https://reactnavigation.org/).
+4 páginas. Se o número de páginas crescer bastante mais, vale a pena
+migrar para [React Navigation](https://reactnavigation.org/).

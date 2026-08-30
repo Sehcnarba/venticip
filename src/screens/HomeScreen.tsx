@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-nati
 export interface HomeScreenProps {
   onOpenTranspulmonaryPressure: () => void;
   onOpenVentilationLimits: () => void;
+  onOpenMechanicalPower: () => void;
   onOpenReferences: () => void;
 }
 
@@ -17,6 +18,7 @@ interface MenuItem {
 export default function HomeScreen({
   onOpenTranspulmonaryPressure,
   onOpenVentilationLimits,
+  onOpenMechanicalPower,
   onOpenReferences,
 }: HomeScreenProps) {
   const items: MenuItem[] = [
@@ -31,6 +33,12 @@ export default function HomeScreen({
       title: "Limites de Ventilação Mecânica",
       subtitle: "Volume corrente (Vc) e volume minuto (VM) a partir do peso, altura e FR",
       onPress: onOpenVentilationLimits,
+    },
+    {
+      icon: "⚡",
+      title: "Mechanical Power",
+      subtitle: "Energia mecânica transferida ao pulmão, a partir da RR, VT, Ppico, Pplat e PEEP",
+      onPress: onOpenMechanicalPower,
     },
     {
       icon: "📚",

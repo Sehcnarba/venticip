@@ -10,6 +10,7 @@
     "web": "expo start --web",
     "validate-calc": "tsx src/calc/validate.ts",
     "validate-tidal": "tsx src/calc/validateTidalVolume.ts",
+    "validate-mp": "tsx src/calc/validateMechanicalPower.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -1,11 +1,12 @@
 # VentiCIP
 
 App de ferramentas de apoio à ventilação mecânica na UCIP, para iOS e
-Android (Expo / React Native). Tem um menu inicial com acesso a três
+Android (Expo / React Native). Tem um menu inicial com acesso a quatro
 páginas: a **Calculadora de Pressão Transpulmonar** (balão esofágico,
 sonda Nutrivent™), os **Limites de Ventilação Mecânica** (volume corrente
-e volume minuto) e uma página de **Referências** com as fórmulas e
-esquemas usados nos cálculos.
+e volume minuto), a **Mechanical Power** (energia mecânica transferida ao
+pulmão) e uma página de **Referências** com as fórmulas e esquemas usados
+nos cálculos.
 
 Portada a partir das folhas de cálculo `Balão Esofágico.xlsx` e `Balão
 Esofágico (com valores alvo).xlsx` usadas na UCIP, e da fórmula de peso
@@ -25,7 +26,7 @@ e `src/calc/validateTidalVolume.ts`.
 
 ## O que já está feito
 
-- **Menu inicial** com acesso às 3 páginas da app.
+- **Menu inicial** com acesso às 4 páginas da app.
 - **Calculadora de Pressão Transpulmonar**:
   - Cada um dos 4 valores medidos (**PEEP**, **Pplat**, **PEsee**,
     **PEsei**) tem o seu **próprio seletor de unidade** (cmH2O ou mmHg) —
@@ -61,14 +62,27 @@ e `src/calc/validateTidalVolume.ts`.
     NutriCIP (IMC alterado).
   - **Vc (volume corrente)** = 6 a 8 mL × peso usado.
   - **VM (volume minuto)** = Vc × FR.
+- **Mechanical Power** (fórmula simplificada, ventilação controlada a
+  volume):
+  - Inputs: **RR** (frequência respiratória), **VT** (volume corrente, em
+    mL), **Ppico** (pressão de pico), **Pplat** (pressão de plateau) e
+    **PEEP** (todas as pressões em cmH2O — os ventiladores mostram-nas
+    diretamente nesta unidade, por isso não há seletor de unidade aqui).
+  - Mostra a **Driving Pressure convencional** (Pplat − PEEP) como
+    referência, e a **Mechanical Power (MP)** em J/min, com 2 estados:
+    **verde** (`≤17` J/min) e **vermelho** (`>17` J/min — referência
+    citada por Serpa Neto et al., 2018, associada a maior risco).
+  - **Sugestão de atuação** quando a MP está acima do valor de
+    referência: rever volume corrente, PEEP, driving pressure e
+    frequência respiratória.
 - **Referências**: as fórmulas de todos os cálculos acima, mais os
   esquemas/tabelas extraídos do protocolo da UCIP e da literatura citada
   (métodos de cálculo da PL, limites sugeridos, e exemplos de titulação
   de PEEP pela pressão transpulmonar).
 - Motores de cálculo isolados da interface
   (`src/calc/transpulmonaryCalculator.ts`,
-  `src/calc/tidalVolumeCalculator.ts`), para serem fáceis de testar e de
-  reutilizar.
+  `src/calc/tidalVolumeCalculator.ts`, `src/calc/mechanicalPowerCalculator.ts`),
+  para serem fáceis de testar e de reutilizar.
 
 ## Lógica clínica implementada
 
@@ -110,6 +124,27 @@ Peso usado   = peso real (se IMC 18,5–24,9) ou peso ideal (caso contrário)
 Vc           = 6 a 8 mL × peso usado
 VM           = Vc × FR
 ```
+
+### Mechanical Power — fórmula e alvo
+
+```
+MP = 0,098 × RR × VT × [Ppico − 1/2×(Pplat − PEEP)]
+```
+
+onde `RR` é a frequência respiratória (ciclos/min), `VT` o volume
+corrente em **litros** (o input na app é em mL, convertido internamente),
+e as pressões em cmH2O. Resultado em J/min. Fórmula original: Gattinoni
+L, et al. *Mechanical power and development of ventilator-induced lung
+injury*. Anesthesiology. 2016. Alvo de referência usado na app:
+
+| Parâmetro         | Alvo         |
+|--------------------|-------------|
+| Mechanical Power   | `≤17` J/min |
+
+Limite citado por Serpa Neto A, et al. *Mechanical power of ventilation
+is associated with mortality in critically ill patients*. Intensive Care
+Med. 2018 — associado a maior risco de lesão pulmonar/mortalidade acima
+deste valor.
 
 ## Como correr o projeto
 
@@ -158,6 +193,7 @@ Native), por isso podem ser validados isoladamente:
 ```bash
 npm run validate-calc    # pressão transpulmonar
 npm run validate-tidal   # volume corrente / volume minuto
+npm run validate-mp      # mechanical power
 ```
 
 `validate-calc` compara a saída do motor com os valores exatos das
@@ -165,7 +201,9 @@ folhas de cálculo originais (caso de referência PEEP=8, Pplat=22,
 PEsee=5,4, PEsei=16,3 cmH2O → PLee=2,6, PLei=5,7, DPl=3,1), incluindo
 casos com unidades em mmHg e unidades mistas por campo. `validate-tidal`
 confirma o peso ideal contra o mesmo caso de referência do NutriCIP e
-testa as fronteiras da classificação do IMC.
+testa as fronteiras da classificação do IMC. `validate-mp` confirma a
+fórmula com casos de referência calculados à mão (incluindo a conversão
+mL→L do VT) e a fronteira dos 17 J/min.
 
 ### Verificar tipos
 
@@ -277,9 +315,11 @@ do repositório no GitHub.
 - Rever com a equipa clínica se deve ser oferecida também a referência de
   ±2 cmH2O para a PL expiratória (Dostal & Dostalova 2023), como
   alternativa configurável ao alvo 0–5 cmH2O atualmente usado.
-- Mais parâmetros nos Limites de Ventilação Mecânica (ex: driving
-  pressure convencional, pressão de plateau) além do Vc/VM já
+- Mais parâmetros nos Limites de Ventilação Mecânica além do Vc/VM já
   implementados.
+- Rever com a equipa clínica se o limite de 17 J/min para a Mechanical
+  Power é o valor a adotar no protocolo da UCIP, ou se preferem outro
+  valor de referência.
 
 ## Estrutura do projeto
 
@@ -297,7 +337,9 @@ venticip/
 │   │   ├── transpulmonaryCalculator.ts  # motor de cálculo da pressão transpulmonar (puro, sem UI)
 │   │   ├── validate.ts                  # validação contra a folha original
 │   │   ├── tidalVolumeCalculator.ts     # motor de cálculo do Vc/VM (puro, sem UI)
-│   │   └── validateTidalVolume.ts       # validação do Vc/VM
+│   │   ├── validateTidalVolume.ts       # validação do Vc/VM
+│   │   ├── mechanicalPowerCalculator.ts # motor de cálculo da mechanical power (puro, sem UI)
+│   │   └── validateMechanicalPower.ts   # validação da mechanical power
 │   ├── components/
 │   │   ├── SignatureFooter.tsx          # assinatura fixa no fundo da app
 │   │   └── RulerSlider.tsx              # régua deslizante própria (sem dependências externas)
@@ -305,6 +347,7 @@ venticip/
 │       ├── HomeScreen.tsx                     # menu inicial
 │       ├── TranspulmonaryPressureScreen.tsx   # calculadora de pressão transpulmonar
 │       ├── VentilationLimitsScreen.tsx        # limites de ventilação (Vc/VM)
+│       ├── MechanicalPowerScreen.tsx          # calculadora de mechanical power
 │       └── ReferencesScreen.tsx               # fórmulas e esquemas de referência
 └── assets/
     ├── icon.png, adaptive-icon.png, splash-icon.png, favicon.png  # placeholders, substituir antes de publicar
@@ -317,5 +360,5 @@ Para já, a navegação entre ecrãs é feita com estado simples do React (sem
 nenhuma biblioteca de navegação) — o `App.tsx` guarda qual o ecrã atual e
 passa uma função `onBack` / `onOpenX` a cada ecrã. Isto foi deliberado
 para não introduzir mais dependências externas enquanto a app só tem
-4 páginas. Se o número de páginas crescer bastante mais, vale a pena
+5 páginas. Se o número de páginas crescer bastante mais, vale a pena
 migrar para [React Navigation](https://reactnavigation.org/).

@@ -157,6 +157,25 @@ export default function ReferencesScreen({ onBack }: ReferencesScreenProps) {
       </View>
 
       <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Mechanical Power (MP)</Text>
+        <Text style={styles.sectionIntro}>
+          Fórmula simplificada para ventilação controlada a volume.
+        </Text>
+
+        <FormulaLine
+          formula="MP = 0,098 × RR × VT × [Ppico − 1/2×(Pplat − PEEP)]"
+          note="RR em ciclos/min, VT em litros, pressões em cmH2O. Resultado em J/min."
+        />
+        <FormulaLine
+          formula="Referência: MP ≤ 17 J/min"
+          note="Serpa Neto A, et al. Mechanical power of ventilation is associated with mortality in critically ill patients. Intensive Care Med. 2018."
+        />
+        <FormulaLine
+          formula="Fórmula original: Gattinoni L, et al. Mechanical power and development of ventilator-induced lung injury. Anesthesiology. 2016."
+        />
+      </View>
+
+      <View style={styles.card}>
         <Text style={styles.sectionTitle}>Volume Corrente (Vc) e Volume Minuto (VM)</Text>
         <Text style={styles.sectionIntro}>
           Regra definida pela equipa da UCIP para o ecrã "Limites de Ventilação Mecânica".

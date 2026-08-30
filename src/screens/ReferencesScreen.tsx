@@ -163,8 +163,8 @@ export default function ReferencesScreen({ onBack }: ReferencesScreenProps) {
         </Text>
 
         <FormulaLine
-          formula="MP = 0,098 × RR × VT × [Ppico − 1/2×(Pplat − PEEP)]"
-          note="RR em ciclos/min, VT em litros, pressões em cmH2O. Resultado em J/min."
+          formula="MP = 0,098 × RR × Vc × [Ppico − 1/2×(Pplat − PEEP)]"
+          note="RR em ciclos/min, Vc em litros, pressões em cmH2O. Resultado em J/min."
         />
         <FormulaLine
           formula="Referência: MP ≤ 17 J/min"

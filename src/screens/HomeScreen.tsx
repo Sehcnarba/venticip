@@ -37,7 +37,7 @@ export default function HomeScreen({
     {
       icon: "⚡",
       title: "Mechanical Power",
-      subtitle: "Energia mecânica transferida ao pulmão, a partir da RR, VT, Ppico, Pplat e PEEP",
+      subtitle: "Energia mecânica transferida ao pulmão, a partir da RR, Vc, Ppico, Pplat e PEEP",
       onPress: onOpenMechanicalPower,
     },
     {

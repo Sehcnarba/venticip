@@ -1,8 +1,8 @@
 // Mechanical Power (fórmula simplificada, ventilação controlada a volume)
 //
-//   MP = 0,098 × RR × VT × [ Ppico − 1/2 × (Pplat − PEEP) ]
+//   MP = 0,098 × RR × Vc × [ Ppico − 1/2 × (Pplat − PEEP) ]
 //
-// onde RR = frequência respiratória (ciclos/min), VT = volume corrente (litros),
+// onde RR = frequência respiratória (ciclos/min), Vc = volume corrente (litros),
 // Ppico = pressão de pico das vias aéreas (cmH2O), Pplat = pressão de plateau
 // (cmH2O), PEEP = pressão expiratória final positiva (cmH2O). Resultado em J/min.
 //

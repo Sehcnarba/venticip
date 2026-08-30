@@ -64,10 +64,14 @@ e `src/calc/validateTidalVolume.ts`.
   - **VM (volume minuto)** = Vc × FR.
 - **Mechanical Power** (fórmula simplificada, ventilação controlada a
   volume):
-  - Inputs: **RR** (frequência respiratória), **VT** (volume corrente, em
-    mL), **Ppico** (pressão de pico), **Pplat** (pressão de plateau) e
-    **PEEP** (todas as pressões em cmH2O — os ventiladores mostram-nas
-    diretamente nesta unidade, por isso não há seletor de unidade aqui).
+  - Todos os 5 parâmetros — **RR** (frequência respiratória), **Vc**
+    (volume corrente, em mL), **Ppico** (pressão de pico), **Pplat**
+    (pressão de plateau) e **PEEP** — usam **réguas deslizantes** (o mesmo
+    componente `RulerSlider` usado nos Limites de Ventilação Mecânica),
+    em vez de campos de texto. O resultado é **recalculado em tempo
+    real** a cada movimento de qualquer régua. Pressões sempre em cmH2O
+    (os ventiladores mostram-nas diretamente nesta unidade, por isso não
+    há seletor de unidade aqui).
   - Mostra a **Driving Pressure convencional** (Pplat − PEEP) como
     referência, e a **Mechanical Power (MP)** em J/min, com 2 estados:
     **verde** (`≤17` J/min) e **vermelho** (`>17` J/min — referência
@@ -128,11 +132,11 @@ VM           = Vc × FR
 ### Mechanical Power — fórmula e alvo
 
 ```
-MP = 0,098 × RR × VT × [Ppico − 1/2×(Pplat − PEEP)]
+MP = 0,098 × RR × Vc × [Ppico − 1/2×(Pplat − PEEP)]
 ```
 
-onde `RR` é a frequência respiratória (ciclos/min), `VT` o volume
-corrente em **litros** (o input na app é em mL, convertido internamente),
+onde `RR` é a frequência respiratória (ciclos/min), `Vc` o volume
+corrente em **litros** (a régua na app está em mL, convertido internamente),
 e as pressões em cmH2O. Resultado em J/min. Fórmula original: Gattinoni
 L, et al. *Mechanical power and development of ventilator-induced lung
 injury*. Anesthesiology. 2016. Alvo de referência usado na app:
@@ -203,7 +207,7 @@ casos com unidades em mmHg e unidades mistas por campo. `validate-tidal`
 confirma o peso ideal contra o mesmo caso de referência do NutriCIP e
 testa as fronteiras da classificação do IMC. `validate-mp` confirma a
 fórmula com casos de referência calculados à mão (incluindo a conversão
-mL→L do VT) e a fronteira dos 17 J/min.
+mL→L do Vc) e a fronteira dos 17 J/min.
 
 ### Verificar tipos
 

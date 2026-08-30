@@ -1,14 +1,6 @@
 import React, { useMemo, useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import RulerSlider from "../components/RulerSlider";
 import {
   calculateMechanicalPower,
   evaluateMechanicalPower,
@@ -20,59 +12,51 @@ function fmt(n: number, decimals = 1) {
   return n.toLocaleString("pt-PT", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
-function parseInput(v: string): number | null {
-  if (v.trim() === "") return null;
-  const n = parseFloat(v.replace(",", "."));
-  return isNaN(n) ? null : n;
-}
-
 type FieldKey = "respiratoryRate" | "tidalVolumeMl" | "peakPressure" | "plateauPressure" | "peep";
 
-interface InputField {
+interface SliderField {
   key: FieldKey;
   label: string;
   helper: string;
   unit: string;
-  placeholder: string;
+  min: number;
+  max: number;
+  step: number;
 }
 
-const FIELDS: InputField[] = [
-  {
-    key: "respiratoryRate",
-    label: "RR",
-    helper: "Frequência respiratória",
-    unit: "cpm",
-    placeholder: "ex: 15",
-  },
-  {
-    key: "tidalVolumeMl",
-    label: "VT",
-    helper: "Volume corrente",
-    unit: "mL",
-    placeholder: "ex: 450",
-  },
+const FIELDS: SliderField[] = [
+  { key: "respiratoryRate", label: "RR", helper: "Frequência respiratória", unit: "cpm", min: 8, max: 40, step: 1 },
+  { key: "tidalVolumeMl", label: "Vc", helper: "Volume corrente", unit: "mL", min: 100, max: 800, step: 10 },
   {
     key: "peakPressure",
     label: "Ppico",
     helper: "Pressão de pico das vias aéreas",
     unit: "cmH2O",
-    placeholder: "ex: 25",
+    min: 0,
+    max: 60,
+    step: 1,
   },
-  {
-    key: "plateauPressure",
-    label: "Pplat",
-    helper: "Pressão de plateau",
-    unit: "cmH2O",
-    placeholder: "ex: 20",
-  },
+  { key: "plateauPressure", label: "Pplat", helper: "Pressão de plateau", unit: "cmH2O", min: 0, max: 50, step: 1 },
   {
     key: "peep",
     label: "PEEP",
     helper: "Pressão expiratória final positiva",
     unit: "cmH2O",
-    placeholder: "ex: 8",
+    min: 0,
+    max: 24,
+    step: 1,
   },
 ];
+
+// Valores iniciais das réguas — coincidem com o caso de referência validado
+// em src/calc/validateMechanicalPower.ts (MP ≈ 12,57 J/min, dentro do alvo).
+const DEFAULT_VALUES: Record<FieldKey, number> = {
+  respiratoryRate: 15,
+  tidalVolumeMl: 450,
+  peakPressure: 25,
+  plateauPressure: 20,
+  peep: 8,
+};
 
 type Severity = "good" | "bad";
 
@@ -81,38 +65,15 @@ export interface MechanicalPowerScreenProps {
 }
 
 export default function MechanicalPowerScreen({ onBack }: MechanicalPowerScreenProps) {
-  const [values, setValues] = useState<Record<FieldKey, string>>({
-    respiratoryRate: "",
-    tidalVolumeMl: "",
-    peakPressure: "",
-    plateauPressure: "",
-    peep: "",
-  });
+  const [values, setValues] = useState<Record<FieldKey, number>>(DEFAULT_VALUES);
 
-  const setField = (key: FieldKey, v: string) => setValues((prev) => ({ ...prev, [key]: v }));
+  const setField = (key: FieldKey, v: number) => setValues((prev) => ({ ...prev, [key]: v }));
 
-  const parsed = useMemo(() => {
-    const respiratoryRate = parseInput(values.respiratoryRate);
-    const tidalVolumeMl = parseInput(values.tidalVolumeMl);
-    const peakPressure = parseInput(values.peakPressure);
-    const plateauPressure = parseInput(values.plateauPressure);
-    const peep = parseInput(values.peep);
-    if (
-      respiratoryRate === null ||
-      tidalVolumeMl === null ||
-      peakPressure === null ||
-      plateauPressure === null ||
-      peep === null
-    ) {
-      return null;
-    }
-    return { respiratoryRate, tidalVolumeMl, peakPressure, plateauPressure, peep };
-  }, [values]);
+  // Recalculado em tempo real a cada movimento de qualquer régua.
+  const result = useMemo(() => calculateMechanicalPower(values), [values]);
 
-  const result = useMemo(() => (parsed ? calculateMechanicalPower(parsed) : null), [parsed]);
-
-  const status = result ? evaluateMechanicalPower(result.mechanicalPower) : null;
-  const severity: Severity | null = status === "dentro" ? "good" : status === "acima" ? "bad" : null;
+  const status = evaluateMechanicalPower(result.mechanicalPower);
+  const severity: Severity = status === "acima" ? "bad" : "good";
   const statusLabel = status === "acima" ? "Acima do valor de referência" : "Dentro do valor de referência";
 
   const nameStyle = severity === "bad" ? styles.resultNameBad : styles.resultNameGood;
@@ -122,97 +83,83 @@ export default function MechanicalPowerScreen({ onBack }: MechanicalPowerScreenP
   const pillTextStyle = severity === "bad" ? styles.pillTextBad : styles.pillTextGood;
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <TouchableOpacity onPress={onBack} style={styles.backButton} accessibilityRole="button">
-          <Text style={styles.backButtonText}>‹ Voltar</Text>
-        </TouchableOpacity>
+    <ScrollView contentContainerStyle={styles.container}>
+      <TouchableOpacity onPress={onBack} style={styles.backButton} accessibilityRole="button">
+        <Text style={styles.backButtonText}>‹ Voltar</Text>
+      </TouchableOpacity>
 
-        <Text style={styles.title}>Mechanical Power</Text>
-        <Text style={styles.subtitle}>Energia mecânica transferida ao pulmão por minuto</Text>
+      <Text style={styles.title}>Mechanical Power</Text>
+      <Text style={styles.subtitle}>Energia mecânica transferida ao pulmão por minuto</Text>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Parâmetros do ventilador</Text>
-
-          {FIELDS.map((field) => (
-            <View key={field.key} style={styles.fieldBlock}>
-              <Text style={styles.fieldLabel}>
-                {field.label} <Text style={styles.fieldHelper}>— {field.helper}</Text>
-              </Text>
-              <View style={styles.fieldInputRow}>
-                <TextInput
-                  style={[styles.input, styles.fieldInputFlex]}
-                  value={values[field.key]}
-                  onChangeText={(v) => setField(field.key, v)}
-                  keyboardType="decimal-pad"
-                  placeholder={field.placeholder}
-                  accessibilityLabel={`${field.label} em ${field.unit}`}
-                />
-                <Text style={styles.fieldUnit}>{field.unit}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {!parsed && (
-          <View style={styles.card}>
-            <Text style={styles.helperText}>
-              Introduz a RR, o VT, a Ppico, a Pplat e a PEEP para calcular a mechanical power.
-            </Text>
-          </View>
-        )}
-
-        {result && (
-          <View style={[styles.card, styles.resultCard]}>
-            <Text style={styles.sectionLabel}>Resultado</Text>
-
-            <Text style={styles.subSectionLabel}>Driving Pressure convencional (Pplat − PEEP)</Text>
-            <View style={styles.metricsRow}>
-              <Text style={styles.metricText}>{fmt(result.drivingPressure)} cmH2O</Text>
-            </View>
-            <View style={styles.divider} />
-
-            <View style={styles.resultHeaderRow}>
-              <Text style={[styles.resultName, nameStyle]}>Mechanical Power (MP)</Text>
-              <View style={[styles.pill, pillStyle]}>
-                <Text style={[styles.pillText, pillTextStyle]}>{statusLabel}</Text>
-              </View>
-            </View>
-            <View style={styles.bigResultRow}>
-              <Text style={[styles.bigResultValue, valueStyle]}>{fmt(result.mechanicalPower)}</Text>
-              <Text style={[styles.bigResultUnit, unitStyle]}>J/min</Text>
-            </View>
-            <Text style={styles.resultTargetText}>
-              Referência: ≤{MECHANICAL_POWER_THRESHOLD} J/min (Serpa Neto et al., 2018)
-            </Text>
-          </View>
-        )}
-
-        {result && status === "acima" && (
-          <View style={[styles.card, styles.suggestionCard]}>
-            <Text style={styles.sectionLabel}>Sugestão de atuação</Text>
-            <View style={styles.suggestionRow}>
-              <Text style={[styles.suggestionBullet, styles.textBad]}>•</Text>
-              <Text style={[styles.suggestionText, styles.textBad]}>
-                Rever volume corrente, PEEP, driving pressure e frequência respiratória, no sentido
-                de reduzir a energia mecânica transferida ao pulmão.
-              </Text>
-            </View>
-          </View>
-        )}
-
-        <Text style={styles.disclaimer}>
-          Esta aplicação é uma ferramenta de apoio ao cálculo para profissionais de saúde. Não
-          substitui o julgamento clínico nem a verificação por um segundo profissional. Confirme
-          sempre os valores lidos no monitor/ventilador antes de ajustar a ventilação.
+      <View style={styles.card}>
+        <Text style={styles.sectionLabel}>Parâmetros do ventilador</Text>
+        <Text style={styles.helperTextInline}>
+          Move as réguas — o resultado é recalculado em tempo real.
         </Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+
+        {FIELDS.map((field) => (
+          <View key={field.key} style={styles.fieldBlock}>
+            <Text style={styles.fieldHelper}>{field.helper}</Text>
+            <RulerSlider
+              label={field.label}
+              value={values[field.key]}
+              onChange={(v) => setField(field.key, v)}
+              min={field.min}
+              max={field.max}
+              step={field.step}
+              unit={field.unit}
+            />
+          </View>
+        ))}
+      </View>
+
+      <View style={[styles.card, styles.resultCard]}>
+        <Text style={styles.sectionLabel}>Resultado</Text>
+
+        <Text style={styles.subSectionLabel}>Driving Pressure convencional (Pplat − PEEP)</Text>
+        <View style={styles.metricsRow}>
+          <Text style={styles.metricText}>{fmt(result.drivingPressure)} cmH2O</Text>
+        </View>
+        <View style={styles.divider} />
+
+        <View style={styles.resultHeaderRow}>
+          <Text style={[styles.resultName, nameStyle]}>Mechanical Power (MP)</Text>
+          <View style={[styles.pill, pillStyle]}>
+            <Text style={[styles.pillText, pillTextStyle]}>{statusLabel}</Text>
+          </View>
+        </View>
+        <View style={styles.bigResultRow}>
+          <Text style={[styles.bigResultValue, valueStyle]}>{fmt(result.mechanicalPower)}</Text>
+          <Text style={[styles.bigResultUnit, unitStyle]}>J/min</Text>
+        </View>
+        <Text style={styles.resultTargetText}>
+          Referência: ≤{MECHANICAL_POWER_THRESHOLD} J/min (Serpa Neto et al., 2018)
+        </Text>
+      </View>
+
+      {status === "acima" && (
+        <View style={[styles.card, styles.suggestionCard]}>
+          <Text style={styles.sectionLabel}>Sugestão de atuação</Text>
+          <View style={styles.suggestionRow}>
+            <Text style={[styles.suggestionBullet, styles.textBad]}>•</Text>
+            <Text style={[styles.suggestionText, styles.textBad]}>
+              Rever volume corrente, PEEP, driving pressure e frequência respiratória, no sentido
+              de reduzir a energia mecânica transferida ao pulmão.
+            </Text>
+          </View>
+        </View>
+      )}
+
+      <Text style={styles.disclaimer}>
+        Esta aplicação é uma ferramenta de apoio ao cálculo para profissionais de saúde. Não
+        substitui o julgamento clínico nem a verificação por um segundo profissional. Confirme
+        sempre os valores lidos no monitor/ventilador antes de ajustar a ventilação.
+      </Text>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
   container: { padding: 20, paddingBottom: 40, backgroundColor: "#F4F6F8" },
   backButton: { alignSelf: "flex-start", paddingVertical: 6, paddingHorizontal: 4, marginBottom: 4 },
   backButtonText: { fontSize: 15, color: "#12283C", fontWeight: "600" },
@@ -246,24 +193,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     marginBottom: 4,
   },
-  fieldBlock: { marginTop: 14 },
-  fieldLabel: { fontSize: 14, fontWeight: "700", color: "#12283C" },
-  fieldHelper: { fontSize: 12, fontWeight: "400", color: "#5B6B7A" },
-  fieldInputRow: { flexDirection: "row", alignItems: "center", marginTop: 6, gap: 8 },
-  fieldInputFlex: { flex: 1, marginTop: 0 },
-  fieldUnit: { fontSize: 13, fontWeight: "600", color: "#5B6B7A", minWidth: 48 },
-  input: {
-    borderWidth: 1,
-    borderColor: "#D6DEE5",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    backgroundColor: "#FBFCFD",
-    color: "#12283C",
-    marginTop: 6,
-  },
-  helperText: { color: "#5B6B7A", fontSize: 13, textAlign: "center" },
+  helperTextInline: { fontSize: 12, color: "#7A8894", marginTop: 6, fontStyle: "italic" },
+  fieldBlock: { marginTop: 20 },
+  fieldHelper: { fontSize: 12, color: "#7A8894", marginBottom: 6 },
   metricsRow: { flexDirection: "row", justifyContent: "space-between", flexWrap: "wrap", rowGap: 4, columnGap: 8 },
   metricText: { fontSize: 13, color: "#33404B" },
   divider: { height: 1, backgroundColor: "#E1EAE4", marginVertical: 12 },

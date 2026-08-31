@@ -139,12 +139,11 @@ export default function MechanicalPowerScreen({ onBack }: MechanicalPowerScreenP
 
       {status === "acima" && (
         <View style={[styles.card, styles.suggestionCard]}>
-          <Text style={styles.sectionLabel}>Sugestão de atuação</Text>
+          <Text style={styles.sectionLabel}>Alerta clínico</Text>
           <View style={styles.suggestionRow}>
             <Text style={[styles.suggestionBullet, styles.textBad]}>•</Text>
             <Text style={[styles.suggestionText, styles.textBad]}>
-              Rever volume corrente, PEEP, driving pressure e frequência respiratória, no sentido
-              de reduzir a energia mecânica transferida ao pulmão.
+              Aumento do risco de ARDS e da mortalidade.
             </Text>
           </View>
         </View>
